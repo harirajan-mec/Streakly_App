@@ -1,109 +1,189 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/supabase_service.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:uuid/uuid.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/hive_service.dart';
 import '../models/user.dart';
 import '../services/admob_service.dart'; // Import AdmobService
 
 class AuthProvider with ChangeNotifier {
+  final AdmobService _admobService;
   bool _isAuthenticated = false;
-  String? _userEmail;
-  String? _userName;
   AppUser? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
-  final AdmobService _admobService; // Add AdmobService instance
+  final Uuid _uuid = const Uuid();
 
   bool get isAuthenticated => _isAuthenticated;
-  String? get userEmail => _userEmail;
-  String? get userName => _userName;
   AppUser? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get userAvatar => _currentUser?.avatarUrl;
 
-  AuthProvider(this._admobService) { // Update constructor
-    _checkAuthStatus();
-    _setupAuthListener();
+  AuthProvider(this._admobService) {
+    _loadLocalUser();
   }
 
-  void _setupAuthListener() {
-    SupabaseService.instance.client.auth.onAuthStateChange.listen((data) {
-      final AuthChangeEvent event = data.event;
-      final Session? session = data.session;
-
-      if (event == AuthChangeEvent.signedIn && session != null) {
-        _handleSignIn(session.user);
-      } else if (event == AuthChangeEvent.signedOut) {
-        _handleSignOut();
-      }
-    });
+  AppUser? _findUserById(List<AppUser> users, String? id) {
+    if (id == null) return null;
+    for (final u in users) {
+      if (u.id == id) return u;
+    }
+    return null;
   }
 
-  Future<void> _checkAuthStatus() async {
+  AppUser? _findUserByEmail(List<AppUser> users, String? email) {
+    if (email == null) return null;
+    for (final u in users) {
+      if (u.email == email) return u;
+    }
+    return null;
+  }
+
+  // Secure storage for PIN
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
+  Future<void> _loadLocalUser() async {
     try {
-      final session = SupabaseService.instance.client.auth.currentSession;
-      if (session != null) {
-        await _handleSignIn(session.user);
-      } else {
-        _handleSignOut();
+      final settings = HiveService.instance.getSettings();
+      final currentUserId = settings['currentUserId'] as String?;
+      if (currentUserId != null) {
+        final users = HiveService.instance.getUsers();
+        _currentUser = _findUserById(users, currentUserId);
+        _isAuthenticated = _currentUser != null;
+        _admobService.loadInterstitialAd(isPremium: _currentUser?.premium ?? false);
       }
+      notifyListeners();
     } catch (e) {
-      _handleSignOut();
+      // ignore
     }
   }
 
-  Future<void> _handleSignIn(User user) async {
+  // PIN & Biometric support (secure storage)
+  String _bytesToHex(List<int> bytes) => bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
+  String _iteratedHash(String pin, String salt, int iterations) {
+    // Simple iterated SHA-256 KDF (reasonable iterations)
+    var digest = sha256.convert(utf8.encode('$pin:$salt')).bytes;
+    for (var i = 0; i < iterations - 1; i++) {
+      digest = sha256.convert(digest).bytes;
+    }
+    return _bytesToHex(digest);
+  }
+
+  Future<bool> setPin(String pin, {int iterations = 10000}) async {
     try {
-      _isAuthenticated = true;
-      _userEmail = user.email;
-      _userName = user.userMetadata?['name'] ?? user.email?.split('@')[0];
+      final salt = _bytesToHex(List<int>.generate(16, (_) => DateTime.now().microsecondsSinceEpoch.remainder(256)));
+      final hash = _iteratedHash(pin, salt, iterations);
+      await _secureStorage.write(key: 'pin_salt', value: salt);
+      await _secureStorage.write(key: 'pin_hash', value: hash);
+      await _secureStorage.write(key: 'pin_iters', value: iterations.toString());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 
-      _currentUser = await SupabaseService.instance.getUserProfile(user.id);
+  Future<bool> verifyPin(String pin) async {
+    final salt = await _secureStorage.read(key: 'pin_salt');
+    final hash = await _secureStorage.read(key: 'pin_hash');
+    final itersStr = await _secureStorage.read(key: 'pin_iters');
+    if (salt == null || hash == null || itersStr == null) return false;
+    final iterations = int.tryParse(itersStr) ?? 10000;
+    final candidate = _iteratedHash(pin, salt, iterations);
+    return candidate == hash;
+  }
 
-      if (_currentUser != null) {
-        _admobService.loadInterstitialAd(isPremium: _currentUser!.premium); // Load ad based on premium status
-        if (_currentUser!.avatarUrl != null) {
-          print('✅ Avatar loaded: ${_currentUser!.avatarUrl}');
+  Future<bool> removePin() async {
+    try {
+      await _secureStorage.delete(key: 'pin_salt');
+      await _secureStorage.delete(key: 'pin_hash');
+      await _secureStorage.delete(key: 'pin_iters');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> hasPin() async {
+    final hash = await _secureStorage.read(key: 'pin_hash');
+    return hash != null;
+  }
+
+  Future<bool> loginWithPin(String pin) async {
+    if (await verifyPin(pin)) {
+      // Auto-login with first user (or stored currentUserId)
+      final settings = HiveService.instance.getSettings();
+      final id = settings['currentUserId'] as String?;
+      final users = HiveService.instance.getUsers();
+      final match = id != null ? _findUserById(users, id) : (users.isNotEmpty ? users.first : null);
+      if (match != null) {
+        _currentUser = match;
+        _isAuthenticated = true;
+        _admobService.loadInterstitialAd(isPremium: match.premium);
+        notifyListeners();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<bool> isBiometricAvailable() async {
+    final auth = LocalAuthentication();
+    return await auth.canCheckBiometrics || await auth.isDeviceSupported();
+  }
+
+  Future<bool> authenticateWithBiometrics() async {
+    try {
+      final auth = LocalAuthentication();
+      final didAuthenticate = await auth.authenticate(
+        localizedReason: 'Please authenticate to access Streakly',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
+      if (didAuthenticate) {
+        // proceed to login similarly to PIN
+        final settings = HiveService.instance.getSettings();
+        final id = settings['currentUserId'] as String?;
+        final users = HiveService.instance.getUsers();
+        final match = id != null ? _findUserById(users, id) : (users.isNotEmpty ? users.first : null);
+        if (match != null) {
+          _currentUser = match;
+          _isAuthenticated = true;
+          _admobService.loadInterstitialAd(isPremium: match.premium);
+          notifyListeners();
+          return true;
         }
       }
-
-      notifyListeners();
     } catch (e) {
-      _errorMessage = 'Failed to load user profile: $e';
-      print('❌ Error loading user profile: $e');
-      notifyListeners();
+      return false;
     }
+    return false;
   }
 
-  void _handleSignOut() {
-    _isAuthenticated = false;
-    _userEmail = null;
-    _userName = null;
-    _currentUser = null;
-    _errorMessage = null;
-    _admobService.loadInterstitialAd(isPremium: false); // Load ad for non-logged-in users
-    notifyListeners();
-  }
-
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String email) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
 
-      final response = await SupabaseService.instance.signIn(
-        email: email,
-        password: password,
-      );
-
-      if (response.user != null) {
+      final users = HiveService.instance.getUsers();
+      final match = _findUserByEmail(users, email);
+      if (match != null) {
+        _currentUser = match;
+        _isAuthenticated = true;
+        final settings = HiveService.instance.getSettings();
+        settings['currentUserId'] = match.id;
+        await HiveService.instance.setSettings(settings);
+        _admobService.loadInterstitialAd(isPremium: match.premium);
         return true;
-      } else {
-        _errorMessage = 'Login failed';
-        return false;
       }
+
+      _errorMessage = 'No account found with that email';
+      return false;
     } catch (e) {
-      _errorMessage = _getErrorMessage(e);
+      _errorMessage = 'Login failed: $e';
       return false;
     } finally {
       _isLoading = false;
@@ -111,29 +191,33 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> register(String name, String email, String password) async {
+  Future<bool> register(String name, String email) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
 
-      final response = await SupabaseService.instance.signUp(
+      final id = _uuid.v4();
+      final user = AppUser(
+        id: id,
         email: email,
-        password: password,
         name: name,
+        avatarUrl: null,
+        createdAt: DateTime.now(),
+        updatedAt: null,
+        preferences: {},
+        premium: false,
       );
-
-      if (response.user != null) {
-        if (response.session == null) {
-          _errorMessage = 'Please check your email to confirm your account';
-        }
-        return true;
-      } else {
-        _errorMessage = 'Registration failed';
-        return false;
-      }
+      await HiveService.instance.addUser(user);
+      _currentUser = user;
+      _isAuthenticated = true;
+      final settings = HiveService.instance.getSettings();
+      settings['currentUserId'] = id;
+      await HiveService.instance.setSettings(settings);
+      _admobService.loadInterstitialAd(isPremium: false);
+      return true;
     } catch (e) {
-      _errorMessage = _getErrorMessage(e);
+      _errorMessage = 'Registration failed: $e';
       return false;
     } finally {
       _isLoading = false;
@@ -141,28 +225,22 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> updateAvatar(String emoji, Color backgroundColor) async {
+  Future<bool> updateAvatar(String emoji) async {
     try {
-      if (_currentUser == null || SupabaseService.instance.currentUserId == null) {
+      if (_currentUser == null) {
         _errorMessage = 'User not logged in';
         return false;
       }
-
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
 
-      await SupabaseService.instance.updateUserProfile(
-        userId: SupabaseService.instance.currentUserId!,
-        data: {'avatar_url': emoji},
-      );
-
       _currentUser = _currentUser!.copyWith(avatarUrl: emoji);
-
+      await HiveService.instance.updateUser(_currentUser!);
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = _getErrorMessage(e);
+      _errorMessage = 'Failed to update avatar: $e';
       return false;
     } finally {
       _isLoading = false;
@@ -174,10 +252,14 @@ class AuthProvider with ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-
-      await SupabaseService.instance.signOut();
+      final settings = HiveService.instance.getSettings();
+      settings.remove('currentUserId');
+      await HiveService.instance.setSettings(settings);
+      _currentUser = null;
+      _isAuthenticated = false;
+      _admobService.loadInterstitialAd(isPremium: false);
     } catch (e) {
-      _errorMessage = _getErrorMessage(e);
+      _errorMessage = 'Logout failed: $e';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -185,20 +267,10 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> resetPassword(String email) async {
-    try {
-      _isLoading = true;
-      _errorMessage = null;
-      notifyListeners();
-
-      await SupabaseService.instance.resetPassword(email);
-      return true;
-    } catch (e) {
-      _errorMessage = _getErrorMessage(e);
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    // No remote password: simply return true if user exists
+    final users = HiveService.instance.getUsers();
+    final match = _findUserByEmail(users, email);
+    return match != null;
   }
 
   void clearError() {
@@ -207,30 +279,10 @@ class AuthProvider with ChangeNotifier {
   }
 
   String _getErrorMessage(dynamic error) {
-    print('Error type: ${error.runtimeType}, Error: $error');
+    debugPrint('Error type: ${error.runtimeType}, Error: $error');
 
-    if (error is AuthException) {
-      switch (error.message) {
-        case 'Invalid login credentials':
-          return 'Invalid email or password';
-        case 'Email not confirmed':
-          return 'Please confirm your email address';
-        case 'User already registered':
-          return 'An account with this email already exists';
-        case 'Password should be at least 6 characters':
-          return 'Password must be at least 6 characters long';
-        case 'Invalid email':
-          return 'Please enter a valid email address';
-        case 'Signup requires a valid password':
-          return 'Please enter a valid password';
-        case 'Email rate limit exceeded':
-          return 'Too many attempts. Please try again later';
-        case 'Weak password':
-          return 'Password is too weak. Please choose a stronger password';
-        default:
-          return error.message.isNotEmpty ? error.message : 'Authentication failed';
-      }
-    }
+    // Legacy remote-auth specific exception handling removed.
+    // We return generic messages based on error text below.
 
     final errorString = error.toString();
     if (errorString.contains('404') ||

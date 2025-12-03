@@ -78,10 +78,10 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
+          border: Border.all(color: theme.colorScheme.outline.withAlpha((0.1 * 255).round())),
           boxShadow: [
             BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.05),
+              color: theme.colorScheme.primary.withAlpha((0.05 * 255).round()),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -93,8 +93,8 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withAlpha((0.1 * 255).round()),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
@@ -116,7 +116,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
               'Start documenting your habit journey!\nCapture insights, reflections, and progress.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withAlpha((0.7 * 255).round()),
                 height: 1.5,
               ),
             ),
@@ -188,7 +188,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: theme.colorScheme.primary.withOpacity(0.3),
+                      color: theme.colorScheme.primary.withAlpha((0.3 * 255).round()),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -216,7 +216,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
                       end: Alignment.bottomCenter,
                       colors: [
                         theme.colorScheme.primary,
-                        theme.colorScheme.primary.withOpacity(0.3),
+                        theme.colorScheme.primary.withAlpha((0.3 * 255).round()),
                       ],
                     ),
                   ),
@@ -235,10 +235,10 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withAlpha((0.1 * 255).round()),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
+                      color: theme.colorScheme.primary.withAlpha((0.2 * 255).round()),
                     ),
                   ),
                   child: Text(
@@ -286,10 +286,10 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
     // Compute card background and border colors based on habit (if present)
     // Use a slightly stronger tint so the habit color is more visible
     // Stronger tint so habit color is clearly visible but still subtle
-    final Color cardBgColor = habit?.color.withOpacity(0.22) ?? theme.cardColor;
+    final Color cardBgColor = habit?.color.withAlpha((0.22 * 255).round()) ?? theme.cardColor;
     final Color cardBorderColor = habit != null
-        ? accentColor.withOpacity(0.32)
-        : theme.colorScheme.outline.withOpacity(0.2);
+      ? accentColor.withAlpha((0.32 * 255).round())
+      : theme.colorScheme.outline.withAlpha((0.2 * 255).round());
 
     // Choose readable text color contrasted against the accent color when a habit is present
     final bool useCustomTextColor = habit != null;
@@ -301,10 +301,10 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+        border: Border.all(color: theme.colorScheme.outline.withAlpha((0.2 * 255).round())),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((0.05 * 255).round()),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -317,7 +317,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: habit.color.withOpacity(0.15),
+                color: habit.color.withAlpha((0.15 * 255).round()),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(8),
                   topRight: Radius.circular(8),
@@ -328,7 +328,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: habit.color.withOpacity(0.2),
+                      color: habit.color.withAlpha((0.2 * 255).round()),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
@@ -370,7 +370,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.8),
+                    color: theme.colorScheme.onSurface.withAlpha((0.8 * 255).round()),
                     height: 1.3,
                   ),
                 ),
@@ -385,7 +385,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color:
-                                    theme.colorScheme.primary.withOpacity(0.1),
+                                    theme.colorScheme.primary.withAlpha((0.1 * 255).round()),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -451,7 +451,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface.withOpacity(0.95),
+        backgroundColor: theme.colorScheme.surface.withAlpha((0.95 * 255).round()),
         elevation: 0,
         titleSpacing: 0,
         title: Row(
@@ -508,7 +508,7 @@ class _NotesScreenState extends State<NotesScreen> with WidgetsBindingObserver {
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.2)),
+                      color: theme.colorScheme.outline.withAlpha((0.2 * 255).round())),
                 ),
                 child: TextField(
                   controller: _searchController,

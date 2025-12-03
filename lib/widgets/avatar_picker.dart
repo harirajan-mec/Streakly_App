@@ -65,7 +65,7 @@ class AvatarPicker extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: maleBaseColor.withOpacity(0.1),
+                    color: maleBaseColor.withAlpha((0.1 * 255).toInt()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -104,7 +104,7 @@ class AvatarPicker extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: femaleBaseColor.withOpacity(0.1),
+                    color: femaleBaseColor.withAlpha((0.1 * 255).toInt()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -150,7 +150,7 @@ class AvatarPicker extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: avatar.backgroundColor.withOpacity(0.2),
+          color: avatar.backgroundColor.withAlpha((0.2 * 255).toInt()),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected

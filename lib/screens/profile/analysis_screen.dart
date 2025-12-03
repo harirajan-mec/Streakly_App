@@ -141,7 +141,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 'Total Streaks',
                 '$totalStreaks',
                 Icons.local_fire_department,
-                Colors.orange,
+                Color(0xFF9B5DE5),
               ),
             ),
           ],
@@ -412,7 +412,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${(completionRate * 100).toInt()}% completion rate',
+                      '${(completionRate * 100).toInt()}% completion rate',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
@@ -424,15 +424,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.16),
+              color: Color(0xFF9B5DE5).withOpacity(0.16),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               children: [
                 Text(
-                  '${habit.currentStreak}',
+                      '${habit.currentStreak}',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.orangeAccent,
+                    color: Color(0xFF9B5DE5),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -461,7 +461,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           context,
           title: 'Best Streaks',
           icon: Icons.local_fire_department_outlined,
-          color: Colors.orangeAccent,
+          color: Color(0xFF9B5DE5),
         ),
         const SizedBox(height: 18),
         Container(
@@ -514,7 +514,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Longest streak',
+                                'Longest streak',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                 ),
@@ -526,7 +526,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.local_fire_department, color: Colors.orange, size: 18),
+                        const Icon(Icons.local_fire_department, color: Color(0xFF9B5DE5), size: 18),
                         const SizedBox(width: 6),
                         Text(
                           '${habit.longestStreak} days',

@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 import '../models/habit.dart';
 import '../widgets/congratulations_popup.dart';
-import '../services/supabase_service.dart';
-import '../services/notification_service.dart';
-import 'package:timezone/timezone.dart' as tz;
+import '../services/hive_service.dart';
+// NotificationService and timezone usage removed
 import '../services/admob_service.dart'; // Import AdmobService
 
 class HabitProvider with ChangeNotifier {
   final List<Habit> _habits = [];
-  final Uuid _uuid = const Uuid();
+  
   bool _isLoading = false;
   String? _errorMessage;
-  final NotificationService _notificationService = NotificationService();
   final AdmobService _admobService; // Add AdmobService instance
 
   List<Habit> get habits => _habits;
@@ -59,7 +56,7 @@ class HabitProvider with ChangeNotifier {
       _isLoading = true;
       _errorMessage = null;
 
-      final habits = await SupabaseService.instance.getUserHabits();
+      final habits = HiveService.instance.getHabits();
       _habits.clear();
       _habits.addAll(habits);
       _isLoading = false;
@@ -70,7 +67,7 @@ class HabitProvider with ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = 'Failed to load habits: $e';
-      print('Error loading habits: $e'); // Debug print
+      debugPrint('Error loading habits: $e');
       _isLoading = false;
       if (WidgetsBinding.instance.isRootWidgetAttached) {
         notifyListeners();
@@ -92,35 +89,18 @@ class HabitProvider with ChangeNotifier {
         return;
       }
 
-      print('Adding habit: ${habit.name}'); // Debug print
-      final createdHabit = await SupabaseService.instance.createHabit(habit);
-      _habits.add(createdHabit);
-      print('Habit added successfully: ${createdHabit.id}'); // Debug print
+      debugPrint('Adding habit: ${habit.name}');
+      await HiveService.instance.addHabit(habit);
+      _habits.add(habit);
+      debugPrint('Habit added successfully: ${habit.id}');
 
-      if (createdHabit.reminderTime != null) {
-        final now = tz.TZDateTime.now(tz.local);
-        var scheduledDate = tz.TZDateTime(
-            tz.local,
-            now.year,
-            now.month,
-            now.day,
-            createdHabit.reminderTime!.hour,
-            createdHabit.reminderTime!.minute);
-        if (scheduledDate.isBefore(now)) {
-          scheduledDate = scheduledDate.add(const Duration(days: 1));
-        }
-        _notificationService.scheduleDailyNotification(
-          createdHabit.id.hashCode,
-          'Time for ${createdHabit.name}',
-          'Don\'t forget to complete your habit!',
-          scheduledDate,
-        );
-      }
+      // Reminder scheduling removed. The `reminderTime` is stored on the habit
+      // but OS-level notification scheduling is currently disabled.
       _admobService.showInterstitialAd(isPremium: isPremium); // Show ad
       _requestReview();
     } catch (e) {
       _errorMessage = 'Failed to add habit: $e';
-      print('Error adding habit: $e'); // Debug print
+      debugPrint('Error adding habit: $e');
       _habits.add(habit);
     } finally {
       _isLoading = false;
@@ -129,10 +109,10 @@ class HabitProvider with ChangeNotifier {
   }
 
   void addTemporaryHabit(Habit habit) {
-    print('Adding temporary habit: ${habit.name}'); // Debug print
+    debugPrint('Adding temporary habit: ${habit.name}');
     _habits.add(habit);
     notifyListeners();
-    print('Temporary habit added successfully: ${habit.id}'); // Debug print
+    debugPrint('Temporary habit added successfully: ${habit.id}');
   }
 
   Future<void> updateHabit(String id, Habit updatedHabit) async {
@@ -150,32 +130,10 @@ class HabitProvider with ChangeNotifier {
 
       final index = _habits.indexWhere((habit) => habit.id == id);
       if (index != -1) {
-        if (SupabaseService.instance.currentUserId != null) {
-          await SupabaseService.instance.updateHabit(updatedHabit);
-        }
+        await HiveService.instance.updateHabit(updatedHabit);
         _habits[index] = updatedHabit;
 
-        _notificationService.cancelNotification(id.hashCode);
-
-        if (updatedHabit.reminderTime != null) {
-          final now = tz.TZDateTime.now(tz.local);
-          var scheduledDate = tz.TZDateTime(
-              tz.local,
-              now.year,
-              now.month,
-              now.day,
-              updatedHabit.reminderTime!.hour,
-              updatedHabit.reminderTime!.minute);
-          if (scheduledDate.isBefore(now)) {
-            scheduledDate = scheduledDate.add(const Duration(days: 1));
-          }
-          _notificationService.scheduleDailyNotification(
-            updatedHabit.id.hashCode,
-            'Time for ${updatedHabit.name}',
-            'Don\'t forget to complete your habit!',
-            scheduledDate,
-          );
-        }
+        // Notification cancel/schedule removed for updated habit
       }
     } catch (e) {
       _errorMessage = 'Failed to update habit: $e';
@@ -190,13 +148,12 @@ class HabitProvider with ChangeNotifier {
   }
 
   void updateTemporaryHabit(String id, Habit updatedHabit) {
-    print('Updating temporary habit: ${updatedHabit.name}'); // Debug print
+    debugPrint('Updating temporary habit: ${updatedHabit.name}');
     final index = _habits.indexWhere((habit) => habit.id == id);
     if (index != -1) {
       _habits[index] = updatedHabit;
       notifyListeners();
-      print(
-          'Temporary habit updated successfully: ${updatedHabit.id}'); // Debug print
+      debugPrint('Temporary habit updated successfully: ${updatedHabit.id}');
     }
   }
 
@@ -207,12 +164,10 @@ class HabitProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      if (SupabaseService.instance.currentUserId != null) {
-        await SupabaseService.instance.deleteHabit(id);
-      }
+      await HiveService.instance.deleteHabit(id);
       _habits.removeWhere((habit) => habit.id == id);
 
-      _notificationService.cancelNotification(id.hashCode);
+      // Notification cancel removed
       _admobService.showInterstitialAd(isPremium: isPremium); // Show ad
     } catch (e) {
       _errorMessage = 'Failed to delete habit: $e';
@@ -238,7 +193,7 @@ class HabitProvider with ChangeNotifier {
       final wasAllCompleted = _areAllHabitsCompleted();
 
       if (currentCount >= habit.remindersPerDay) {
-        print(
+        debugPrint(
             '⚠️  Habit "${habit.name}" is fully completed for today. Try again tomorrow!');
         _errorMessage =
             'Habit already completed for today. Come back tomorrow!';
@@ -253,19 +208,13 @@ class HabitProvider with ChangeNotifier {
         completedDates.add(today);
       }
 
-      print(
+        debugPrint(
           '✅ Habit "${habit.name}" marked complete ($newCount/${habit.remindersPerDay})');
 
-      if (SupabaseService.instance.currentUserId != null) {
-        try {
-          await SupabaseService.instance.recordHabitCompletion(
-            habitId: id,
-            completionDate: today,
-            count: newCount,
-          );
-        } catch (e) {
-          _errorMessage = 'Failed to sync completion: $e';
-        }
+      try {
+        await HiveService.instance.recordCompletion(id, today, count: newCount);
+      } catch (e) {
+        _errorMessage = 'Failed to record completion: $e';
       }
 
       _habits[index] = habit.copyWith(
@@ -312,7 +261,7 @@ class HabitProvider with ChangeNotifier {
         habitName: 'All habits completed',
         customMessage: 'You completed all your habits for today! 🎉',
         habitIcon: Icons.workspace_premium,
-        habitColor: Colors.deepPurpleAccent,
+        habitColor: Color(0xFF9B5DE5),
       ),
     );
   }

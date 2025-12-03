@@ -28,6 +28,7 @@ class ModernHabitCard extends StatelessWidget {
         confirmDismiss: (direction) async {
           if (direction == DismissDirection.endToStart) {
             // Swipe left - Delete
+            final habitProvider = Provider.of<HabitProvider>(context, listen: false);
             final confirmed = await showDialog<bool>(
               context: context,
               builder: (context) => AlertDialog(
@@ -47,11 +48,10 @@ class ModernHabitCard extends StatelessWidget {
               ),
             );
             
-            if (confirmed == true) {
-              Provider.of<HabitProvider>(context, listen: false)
-                  .deleteHabit(habit.id);
-              return true; // Allow dismiss
-            }
+              if (confirmed == true) {
+                habitProvider.deleteHabit(habit.id);
+                return true; // Allow dismiss
+              }
             return false; // Cancel dismiss
           } else if (direction == DismissDirection.startToEnd) {
             // Swipe right - Quick complete (if not fully completed)
@@ -121,9 +121,9 @@ class ModernHabitCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFF2D2D2D),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
+            boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withAlpha((0.1 * 255).round()),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -160,7 +160,7 @@ class ModernHabitCard extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: habit.color.withOpacity(0.2),
+            color: habit.color.withAlpha((0.2 * 255).round()),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
@@ -188,9 +188,9 @@ class ModernHabitCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    'Streak: ${habit.currentStreak}',
+                      'Streak: ${habit.currentStreak}',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withAlpha((0.7 * 255).round()),
                       fontSize: 12,
                     ),
                   ),
@@ -200,8 +200,8 @@ class ModernHabitCard extends StatelessWidget {
                       '• $completionCount/$totalRequired today',
                       style: TextStyle(
                         color: isFullyCompleted 
-                            ? Colors.green 
-                            : Colors.white.withOpacity(0.7),
+                          ? Colors.green 
+                          : Colors.white.withAlpha((0.7 * 255).round()),
                         fontSize: 12,
                         fontWeight: isFullyCompleted ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -229,15 +229,15 @@ class ModernHabitCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isFullyCompleted 
                       ? Colors.green 
-                      : isCompleted 
-                          ? Colors.green.withOpacity(0.5)
+                        : isCompleted 
+                          ? Colors.green.withAlpha((0.5 * 255).round())
                           : Colors.transparent,
                   border: Border.all(
                     color: isFullyCompleted 
-                        ? Colors.green 
-                        : isCompleted 
-                            ? Colors.green.withOpacity(0.5)
-                            : Colors.white.withOpacity(0.3),
+                    ? Colors.green 
+                    : isCompleted 
+                      ? Colors.green.withAlpha((0.5 * 255).round())
+                      : Colors.white.withAlpha((0.3 * 255).round()),
                     width: 2,
                   ),
                   borderRadius: BorderRadius.circular(14),
@@ -297,15 +297,15 @@ class ModernHabitCard extends StatelessWidget {
     Color? borderColor;
 
     if (isFuture) {
-      cellColor = Colors.grey.withOpacity(0.3);
+      cellColor = Colors.grey.withAlpha((0.3 * 255).round());
     } else if (isCompleted) {
       cellColor = Colors.green;
     } else if (isMissed) {
-      cellColor = Colors.red.withOpacity(0.8);
+      cellColor = Colors.red.withAlpha((0.8 * 255).round());
     } else {
       // Today but not completed
-      cellColor = Colors.grey.withOpacity(0.3);
-      borderColor = Colors.white.withOpacity(0.5);
+      cellColor = Colors.grey.withAlpha((0.3 * 255).round());
+      borderColor = Colors.white.withAlpha((0.5 * 255).round());
     }
 
     return Container(

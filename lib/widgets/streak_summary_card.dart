@@ -30,7 +30,7 @@ class StreakSummaryCard extends StatelessWidget {
               label: 'Total Streaks',
               value: totalStreaks.toString(),
               icon: Icons.local_fire_department,
-              accent: Colors.orange,
+              accent: Color(0xFF9B5DE5),
             ),
           ),
           Container(

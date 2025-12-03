@@ -7,6 +7,7 @@ import '../../widgets/habit_detail_bottom_sheet.dart';
 import '../../widgets/habit_note_icon_button.dart';
 import '../../widgets/multi_completion_button.dart';
 import '../main/main_navigation.dart';
+import '../main_navigation_screen.dart';
 import '../profile/profile_screen.dart';
 import '../../services/navigation_service.dart';
 import '../subscription/subscription_plans_screen.dart';
@@ -23,7 +24,6 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
   @override
   void initState() {
     super.initState();
-    NavigationService.setGridViewMode(true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<HabitProvider>(context, listen: false).loadHabits();
     });
@@ -36,7 +36,7 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface.withOpacity(0.95),
+        backgroundColor: theme.colorScheme.surface.withAlpha((0.95 * 255).round()),
         elevation: 0,
         titleSpacing: 0,
         automaticallyImplyLeading: false,
@@ -108,20 +108,20 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.track_changes,
-                        size: 80,
-                        color: theme.colorScheme.onSurface.withOpacity(0.3)),
+                      size: 80,
+                      color: theme.colorScheme.onSurface.withAlpha((0.3 * 255).round())),
                     const SizedBox(height: 16),
                     Text(
                       'No habits found',
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        color: theme.colorScheme.onSurface.withAlpha((0.6 * 255).round()),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Add some habits to see your progress grid',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.4),
+                        color: theme.colorScheme.onSurface.withAlpha((0.4 * 255).round()),
                       ),
                     ),
                   ],
@@ -191,8 +191,8 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
                                     style:
                                         theme.textTheme.headlineSmall?.copyWith(
                                       fontWeight: FontWeight.w400,
-                                      color: theme.colorScheme.primary
-                                          .withOpacity(0.8),
+                                        color: theme.colorScheme.primary
+                                          .withAlpha((0.8 * 255).round()),
                                       fontSize: 26,
                                     ),
                                   ),
@@ -277,8 +277,8 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
                                       begin: Alignment.topCenter,
                                       end: Alignment.bottomCenter,
                                       colors: [
-                                        Colors.orange.shade300,
-                                        Colors.deepOrange.shade600,
+                                        Color(0xFFD0A9F5),
+                                        Color(0xFF9B5DE5),
                                       ],
                                     ).createShader(bounds);
                                   },
@@ -361,10 +361,10 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
                       if (isCompleted) {
                         cellColor = habit.color;
                       } else if (cellDate.isAfter(now)) {
-                        cellColor = habit.color.withOpacity(0.15);
+                        cellColor = habit.color.withAlpha((0.15 * 255).round());
                       } else {
-                        cellColor =
-                            theme.colorScheme.onSurface.withOpacity(0.1);
+                            cellColor =
+                            theme.colorScheme.onSurface.withAlpha((0.1 * 255).round());
                       }
 
                       final isToday = cellDate.day == now.day &&
@@ -481,7 +481,7 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
       builder: (BuildContext context) {
         return Container(
           decoration: BoxDecoration(
-            color: theme.cardColor,
+                  color: theme.cardColor,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -494,8 +494,8 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
                 width: 40,
                 height: 4,
                 margin: const EdgeInsets.only(top: 12, bottom: 20),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withOpacity(0.3),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withAlpha((0.3 * 255).round()),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -506,7 +506,7 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              ListTile(
+                ListTile(
                 leading: Container(
                   width: 40,
                   height: 40,
@@ -562,8 +562,14 @@ class _HabitGridScreenState extends State<HabitGridScreen> {
                       ? theme.colorScheme.primary
                       : null,
                 ),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
+                  await NavigationService.setGridViewMode(true);
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: 20),

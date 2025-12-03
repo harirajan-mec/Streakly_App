@@ -1,173 +1,223 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
+
+import '../services/hive_service.dart';
+import '../models/habit.dart';
 
 class NotificationService {
-  static final NotificationService _instance = NotificationService._internal();
+  NotificationService._privateConstructor();
+  static final NotificationService _instance = NotificationService._privateConstructor();
   factory NotificationService() => _instance;
-  NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
-  static const String _channelId = "daily_notification_channel";
-  static const String _channelName = "Daily Notifications";
-  static const String _channelDescription = "Daily Habit Reminders";
+  static const String _channelId = 'streakly_daily_channel';
+  static const String _channelName = 'Streakly Reminders';
+  static const String _channelDescription = 'Daily habit reminders from Streakly';
 
-  // GENERATE A SAFE TIMEZONE FROM DEVICE OFFSET
-  String _safeLocalTimezone() {
-    final offset = DateTime.now().timeZoneOffset; // e.g. +5:30
-    final hours = offset.inHours; // 5
-    final minutes = offset.inMinutes.abs() % 60; // 30
+  Future<void> initNotifications() async {
+    try {
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosInit = DarwinInitializationSettings();
 
-    // Convert IST → Etc/GMT-5.5   (this is correct mapping)
-    final sign = hours >= 0 ? '-' : '+';
+      const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
 
-    if (minutes == 0) {
-      return "Etc/GMT$sign${hours.abs()}";
-    } else {
-      double decimal = hours.abs() + minutes / 60.0;
-      return "Etc/GMT$sign$decimal";
+      await _plugin.initialize(initSettings);
+
+      // Timezone setup using flutter_timezone
+      try {
+        tzdata.initializeTimeZones();
+        String localTz = 'UTC';
+        try {
+          localTz = await FlutterTimezone.getLocalTimezone();
+          debugPrint('📍 Device timezone: $localTz');
+        } catch (e) {
+          debugPrint('⚠️ Could not get device timezone, using UTC: $e');
+        }
+
+        try {
+          tz.setLocalLocation(tz.getLocation(localTz));
+          debugPrint('✅ Timezone set to $localTz');
+        } catch (e) {
+          // Fallback to UTC
+          tz.setLocalLocation(tz.UTC);
+          debugPrint('⚠️ Failed to set $localTz, using UTC: $e');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Timezone initialization failed: $e');
+      }
+
+      // Create Android channel
+      const androidChannel = AndroidNotificationChannel(
+        _channelId,
+        _channelName,
+        description: _channelDescription,
+        importance: Importance.max,
+      );
+
+      await _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(androidChannel);
+
+      // Request iOS permissions only; Android 13+ handled by manifest / platform
+      await _requestPermissions();
+
+      debugPrint('✅ NotificationService initialized');
+    } catch (e) {
+      debugPrint('❌ Error initializing notifications: $e');
     }
   }
 
-  Future<void> init() async {
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosInit = DarwinInitializationSettings();
-
-    final settings = const InitializationSettings(
-      android: androidInit,
-      iOS: iosInit,
-    );
-
-    await flutterLocalNotificationsPlugin.initialize(settings);
-
-    // Timezone fix
-    tz.initializeTimeZones();
-    String region = _safeLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(region));
-
-    print("📍 Using SAFE timezone → $region");
-
-    final channel = const AndroidNotificationChannel(
-      _channelId,
-      _channelName,
-      description: _channelDescription,
-      importance: Importance.max,
-    );
-
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
-  }
-
-  Future<void> requestPermissions() async {
-    final ios = flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>();
-    if (ios != null) {
-      await ios.requestPermissions(alert: true, badge: true, sound: true);
+  Future<void> _requestPermissions() async {
+    try {
+      // Android permissions are managed via AndroidManifest or platform channels.
+      await _plugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+    } catch (e) {
+      debugPrint('⚠️ Error requesting notification permissions: $e');
     }
-
-    // Android 13+ permissions are handled at app level in AndroidManifest.xml
-    // No need to request programmatically
   }
 
-  Future<void> cleanupOld() async {
-    await flutterLocalNotificationsPlugin.cancelAll();
-  }
+  int _normalizeId(int id) => id & 0x7fffffff;
 
-  Future<void> scheduleOneTimeNotification(
-    int id,
-    String title,
-    String body,
-    tz.TZDateTime date,
-  ) async {
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      date,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-        ),
-        iOS: const DarwinNotificationDetails(),
+  NotificationDetails _notificationDetails() {
+    return const NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: _channelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        icon: '@mipmap/ic_launcher',
       ),
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-  }
-
-  // DAILY notification
-  Future<void> scheduleDailyNotification(
-    int id,
-    String title,
-    String body,
-    tz.TZDateTime scheduledDate,
-  ) async {
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledDate,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.max,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-  }
-
-  Future<void> sendTestNotification() async {
-    await flutterLocalNotificationsPlugin.show(
-      999,
-      'Test Notification',
-      'This is a test',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.max,
-          icon: '@mipmap/ic_launcher',
-        ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentSound: true,
+        presentBadge: true,
       ),
     );
   }
 
-  // Clear old corrupted notifications
-  Future<void> cleanupOldCorruptedNotifications() async {
-    if (kDebugMode) print("🧹 Clearing old scheduled notifications...");
-    await flutterLocalNotificationsPlugin.cancelAll();
-    if (kDebugMode) print("✅ Cleanup done");
+  Future<void> showNotification({
+    int id = 0,
+    String? title,
+    String? body,
+    String? payload,
+  }) async {
+    try {
+      await _plugin.show(id, title, body, _notificationDetails(), payload: payload);
+    } catch (e) {
+      debugPrint('❌ Failed to show notification: $e');
+    }
   }
 
-  Future<void> cancelNotification(int id) async {
-    await flutterLocalNotificationsPlugin.cancel(id);
+  Future<void> scheduleNotification({
+    int id = 0,
+    String? title,
+    String? body,
+    String? payload,
+    required DateTime scheduledDateTime,
+    DateTimeComponents? matchComponents,
+  }) async {
+    try {
+      final tzDateTime = tz.TZDateTime.from(scheduledDateTime, tz.local);
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tzDateTime,
+        _notificationDetails(),
+        payload: payload,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: matchComponents,
+      );
+    } catch (e) {
+      debugPrint('❌ Failed to schedule notification: $e');
+    }
   }
 
+  Future<void> scheduleHabitReminder(int habitId, String title, String body, TimeOfDay time) async {
+    try {
+      final id = _normalizeId(habitId);
+      final now = DateTime.now();
+      var scheduled = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+      if (!scheduled.isAfter(now)) {
+        scheduled = scheduled.add(const Duration(days: 1));
+      }
+
+      await scheduleNotification(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDateTime: scheduled,
+        matchComponents: DateTimeComponents.time,
+      );
+
+      debugPrint('🗓️ Scheduled reminder id=$id at ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}');
+    } catch (e) {
+      debugPrint('❌ Failed to schedule reminder for habit $habitId: $e');
+    }
+  }
+
+  Future<void> scheduleReminderForHabit(Habit habit) async {
+    if (habit.reminderTime == null) return;
+    final id = _normalizeId(habit.id.hashCode);
+    final title = habit.name;
+    final body = 'Time to complete your habit: ${habit.name}';
+    await cancelReminder(id);
+    await scheduleHabitReminder(id, title, body, habit.reminderTime!);
+  }
+
+  Future<void> cancelReminder(int habitId) async {
+    try {
+      final id = _normalizeId(habitId);
+      await _plugin.cancel(id);
+      debugPrint('🛑 Cancelled reminder id=$id');
+    } catch (e) {
+      debugPrint('❌ Failed to cancel reminder $habitId: $e');
+    }
+  }
+
+  Future<void> cancelAll() async {
+    try {
+      await _plugin.cancelAll();
+      debugPrint('🧹 Cancelled all notifications');
+    } catch (e) {
+      debugPrint('❌ Failed to cancel all notifications: $e');
+    }
+  }
+
+  /// Schedule reminders for all saved habits that have reminderTime set.
+  Future<void> scheduleAllSavedHabits() async {
+    try {
+      final habits = HiveService.instance.getHabits();
+      for (final habit in habits) {
+        if (habit.reminderTime != null) {
+          await scheduleReminderForHabit(habit);
+        }
+      }
+      debugPrint('✅ Scheduled reminders for saved habits');
+    } catch (e) {
+      debugPrint('⚠️ Failed to schedule saved habit reminders: $e');
+    }
+  }
+
+  /// Returns the list of pending scheduled notification requests from the plugin.
+  /// Returns an empty list on error.
   Future<List<PendingNotificationRequest>> getPendingNotificationRequests() async {
-    return await flutterLocalNotificationsPlugin.pendingNotificationRequests();
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      return pending;
+    } catch (e) {
+      debugPrint('⚠️ Failed to fetch pending notifications: $e');
+      return <PendingNotificationRequest>[];
+    }
   }
 }

@@ -1,19 +1,22 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart'; // This is still needed for sharing
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/habit_provider.dart';
+import '../../providers/note_provider.dart';
 import '../../models/habit.dart';
+import '../../services/export_import_service.dart';
 import '../../widgets/modern_button.dart';
-import '../auth/login_screen.dart';
+import '../main/main_navigation.dart';
+import '../auth/splash_screen.dart';
 import 'analysis_screen.dart';
 import '../subscription/subscription_plans_screen.dart';
-import 'leaderboard_screen.dart';
 import '../../widgets/hero_stats_card.dart';
 import '../reminders/test_notification_screen.dart';
-import '../shop/shop_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -24,7 +27,7 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface.withOpacity(0.95),
+        backgroundColor: theme.colorScheme.surface.withAlpha((0.95 * 255).round()),
         elevation: 0,
         title: Text(
           'Profile',
@@ -153,7 +156,7 @@ class ProfileScreen extends StatelessWidget {
                   title: 'Current Streaks',
                   value: '$currentAllHabitsStreak',
                   icon: Icons.local_fire_department,
-                  color: Colors.orange,
+                  color: Color(0xFF9B5DE5),
                 ),
               ),
               const SizedBox(width: 12),
@@ -173,7 +176,7 @@ class ProfileScreen extends StatelessWidget {
                   title: 'Score',
                   value: '$score',
                   icon: Icons.star,
-                  color: Colors.purple,
+                  color: Color(0xFF9B5DE5),
                 ),
               ),
             ],
@@ -204,7 +207,7 @@ class ProfileScreen extends StatelessWidget {
                 title: 'Total Streaks',
                 value: '${habitProvider.totalStreaks}',
                 icon: Icons.local_fire_department,
-                color: Colors.orangeAccent,
+                color: Color(0xFF9B5DE5),
               ),
             ),
             const SizedBox(width: 12),
@@ -237,7 +240,7 @@ class ProfileScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+        border: Border.all(color: theme.colorScheme.outline.withAlpha((0.2 * 255).round())),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -246,7 +249,7 @@ class ProfileScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.18),
+              color: color.withAlpha((0.18 * 255).round()),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 18),
@@ -287,7 +290,7 @@ class ProfileScreen extends StatelessWidget {
               title: 'Analysis',
               subtitle: 'View your habit statistics and progress',
               icon: Icons.analytics,
-              iconColor: Colors.purpleAccent,
+              iconColor: Color(0xFF9B5DE5),
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const AnalysisScreen()),
@@ -302,64 +305,15 @@ class ProfileScreen extends StatelessWidget {
           [
             _buildMenuItem(
               context,
-              title: 'Leaderboard',
-              subtitle: 'See how you rank against other users',
-              icon: Icons.leaderboard,
-              iconColor: Colors.amberAccent,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
-                );
-              },
+              title: 'Backup Data',
+              subtitle: 'Export or import your habits, notes, and settings',
+              icon: Icons.cloud_sync,
+              iconColor: Colors.tealAccent,
+              onTap: () => _showBackupDialog(context),
             ),
           ],
         ),
         const SizedBox(height: 16),
-        Consumer<HabitProvider>(
-          builder: (context, habitProvider, child) {
-            final totalScore = _calculateCompletionScore(habitProvider);
-            final totalCompletions = totalScore ~/ 10;
-
-            return Column(
-              children: [
-                _buildMenuCard(
-                  context,
-                  [
-                    _buildMenuItem(
-                      context,
-                      title: 'Scoreboard',
-                      subtitle: 'See points earned from completions',
-                      icon: Icons.emoji_events,
-                      iconColor: Colors.orangeAccent,
-                      onTap: () => _showScoreboardDialog(
-                        context,
-                        totalScore,
-                        totalCompletions,
-                      ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.orangeAccent.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '$totalScore pts',
-                          style:
-                              Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: Colors.orangeAccent,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-              ],
-            );
-          },
-        ),
         _buildMenuCard(
           context,
           [
@@ -372,20 +326,6 @@ class ProfileScreen extends StatelessWidget {
               onTap: () {
                 _showNotificationSettingsDialog(context);
               },
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildMenuCard(
-          context,
-          [
-            _buildMenuItem(
-              context,
-              title: 'Streakly Shop',
-              subtitle: 'Unlock themes, boosters, and extras',
-              icon: Icons.shopping_bag,
-              iconColor: Colors.pinkAccent,
-              onTap: () => _showShopDialog(context),
             ),
           ],
         ),
@@ -463,7 +403,7 @@ class ProfileScreen extends StatelessWidget {
               title: 'Terms of Service',
               subtitle: 'View terms and conditions of use',
               icon: Icons.description_outlined,
-              iconColor: Colors.deepPurple,
+              iconColor: Color(0xFF9B5DE5),
               onTap: () {
                 _showTermsOfService(context);
               },
@@ -499,7 +439,7 @@ class ProfileScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+         border: Border.all(color: theme.colorScheme.outline.withAlpha((0.2 * 255).round())),
       ),
       child: Column(children: children),
     );
@@ -524,7 +464,7 @@ class ProfileScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.18),
+                color: iconColor.withAlpha((0.18 * 255).round()),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: iconColor, size: 18),
@@ -547,7 +487,7 @@ class ProfileScreen extends StatelessWidget {
                   Text(
                     subtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withAlpha((0.6 * 255).round()),
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 2,
@@ -558,87 +498,9 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(width: 8),
             trailing ??
                 Icon(Icons.chevron_right,
-                    color: theme.colorScheme.onSurface.withOpacity(0.4)),
+                    color: theme.colorScheme.onSurface.withAlpha((0.4 * 255).round())),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showShopDialog(BuildContext context) {
-    final theme = Theme.of(context);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.pinkAccent.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.shopping_bag, color: Colors.pinkAccent),
-            ),
-            const SizedBox(width: 12),
-            const Text('Streakly Shop'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Upgrade your experience with premium themes, streak boosts, and fun avatar items.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.75),
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Column(
-              children: const [
-                _ShopHighlight(
-                  icon: Icons.palette_outlined,
-                  color: Colors.deepPurple,
-                  title: 'Exclusive Themes',
-                  subtitle: 'Personalize your streak dashboard',
-                ),
-                SizedBox(height: 12),
-                _ShopHighlight(
-                  icon: Icons.bolt,
-                  color: Colors.orange,
-                  title: 'Boosters & Power-ups',
-                  subtitle: 'Keep your streak alive even on busy days',
-                ),
-                SizedBox(height: 12),
-                _ShopHighlight(
-                  icon: Icons.emoji_emotions,
-                  color: Colors.green,
-                  title: 'Avatar Goodies',
-                  subtitle: 'Unlock badges, frames, and more fun flair',
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Maybe Later'),
-          ),
-          FilledButton.icon(
-            icon: const Icon(Icons.shopping_cart),
-            label: const Text('Go to Shop'),
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ShopScreen()),
-              );
-            },
-          ),
-        ],
       ),
     );
   }
@@ -663,13 +525,13 @@ class ProfileScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Icon(Icons.local_fire_department,
-                color: Colors.orange, size: 40),
+                color: Color(0xFF9B5DE5), size: 40),
             const SizedBox(height: 16),
             Text(
               'Enjoying Streakly? Share it with your friends and help them build great habits too!',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withAlpha((0.7 * 255).round()),
               ),
             ),
           ],
@@ -789,7 +651,7 @@ class ProfileScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.description_outlined, color: Colors.deepPurple),
+            Icon(Icons.description_outlined, color: Color(0xFF9B5DE5)),
             const SizedBox(width: 8),
             const Text('Terms of Service'),
           ],
@@ -1041,7 +903,7 @@ class ProfileScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withAlpha((0.1 * 255).round()),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -1090,24 +952,25 @@ class ProfileScreen extends StatelessWidget {
             child: Text(
               'Cancel',
               style: TextStyle(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                  color: theme.colorScheme.onSurface.withAlpha((0.6 * 255).round())),
             ),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               final email = emailController.text.trim();
               final message = messageController.text.trim();
 
               if (email.isEmpty || !email.contains('@')) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Please enter a valid email address')),
+                final messenger = ScaffoldMessenger.of(context);
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid email address')),
                 );
                 return;
               }
 
               if (message.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                final messenger = ScaffoldMessenger.of(context);
+                messenger.showSnackBar(
                   const SnackBar(content: Text('Please enter your message')),
                 );
                 return;
@@ -1117,27 +980,29 @@ class ProfileScreen extends StatelessWidget {
               final Uri emailUri = Uri(
                 scheme: 'mailto',
                 path: 'habitmakerc@gmail.com',
-                query:
-                    'subject=Streakly Support Request&body=${Uri.encodeComponent(message)}\n\nFrom: $email',
+                query: 'subject=Streakly Support Request&body=${Uri.encodeComponent(message)}\n\nFrom: $email',
               );
 
-              launchUrl(emailUri).then((_) {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+
+              try {
+                await launchUrl(emailUri);
+                navigator.pop();
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Opening email client...'),
                     duration: Duration(seconds: 2),
                   ),
                 );
-              }).catchError((_) {
-                ScaffoldMessenger.of(context).showSnackBar(
+              } catch (_) {
+                messenger.showSnackBar(
                   const SnackBar(
-                    content: Text(
-                        'Could not open email client. Please send your message to habitmakerc@gmail.com'),
+                    content: Text('Could not open email client. Please send your message to habitmakerc@gmail.com'),
                     duration: Duration(seconds: 4),
                   ),
                 );
-              });
+              }
             },
             child: const Text('Send'),
           ),
@@ -1175,11 +1040,10 @@ class ProfileScreen extends StatelessWidget {
                   child: ModernButton(
                     text: 'Sign Out',
                     type: ModernButtonType.destructive,
-                    onPressed: () {
-                      Provider.of<AuthProvider>(context, listen: false)
-                          .logout();
+                      onPressed: () {
+                      Provider.of<AuthProvider>(context, listen: false).logout();
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        MaterialPageRoute(builder: (_) => const MainNavigation()),
                         (route) => false,
                       );
                     },
@@ -1193,103 +1057,204 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showScoreboardDialog(
-    BuildContext context,
-    int totalScore,
-    int totalCompletions,
-  ) {
-    final theme = Theme.of(context);
+  
 
-    showDialog(
+  void _showBackupDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.orangeAccent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.emoji_events,
-                color: Colors.orangeAccent,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text('Scoreboard'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Total Score',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '$totalScore pts',
-              style: theme.textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: Colors.orangeAccent,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Habit Completions',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$totalCompletions total',
-                    style: theme.textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: const [
-                      Icon(Icons.add, size: 16, color: Colors.orangeAccent),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Every completion adds 10 points to your score.',
-                          style: TextStyle(fontSize: 13),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Keep Going'),
-          ),
-        ],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withAlpha((0.12 * 255).round()),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.cloud_sync, color: theme.colorScheme.primary),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Backup Data',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Quickly export your data or restore from a saved JSON backup.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withAlpha((0.7 * 255).round()),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent.withAlpha((0.16 * 255).round()),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.ios_share, color: Colors.green),
+                  ),
+                  title: const Text('Share Backup'),
+                  subtitle: const Text('Send the JSON export via mail, chat, or cloud drive'),
+                  onTap: () => _handleExportShare(context, sheetContext),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withAlpha((0.16 * 255).round()),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.save_alt, color: Colors.blueAccent),
+                  ),
+                  title: const Text('Save to Device'),
+                  subtitle: const Text('Store a copy inside the app documents folder'),
+                  onTap: () => _handleExportSave(context, sheetContext),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF9B5DE5).withAlpha((0.16 * 255).round()),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.upload_file, color: Color(0xFF9B5DE5)),
+                  ),
+                  title: const Text('Import Backup'),
+                  subtitle: const Text('Restore from a JSON file exported from Streakly'),
+                  onTap: () => _handleImport(context, sheetContext),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  Future<void> _handleExportShare(BuildContext context, BuildContext sheetContext) async {
+    Navigator.of(sheetContext).pop();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ExportImportService.instance.shareExport();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Opening share sheet with your backup...')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleExportSave(BuildContext context, BuildContext sheetContext) async {
+    Navigator.of(sheetContext).pop();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final file = await ExportImportService.instance.exportToFile();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Backup saved to ${file.path}')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+  Future<void> _handleImport(BuildContext context, BuildContext sheetContext) async {
+    Navigator.of(sheetContext).pop();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final path = result.files.first.path;
+      if (path == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Selected file is not accessible')),
+        );
+        return;
+      }
+
+      final file = File(path);
+      final content = await file.readAsString();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Importing data...')),
+      );
+
+      final resultMap = await ExportImportService.instance
+          .importFromJsonString(content, overwrite: false);
+
+      if (resultMap['success'] == true) {
+        // Refresh habits data after successful import
+        if (context.mounted) {
+          await Provider.of<HabitProvider>(context, listen: false).loadHabits();
+          await Provider.of<NoteProvider>(context, listen: false).loadNotes();
+        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Import complete. Restarting app...'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+
+        // Wait for snackbar
+        await Future.delayed(const Duration(seconds: 1));
+
+        if (context.mounted) {
+          // Restart app by navigating to Splash Screen
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const SplashScreen()),
+            (route) => false,
+          );
+        }
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Import failed: ${resultMap['error']} (backup: ${resultMap['backup']})'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Import failed: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   void _showNotificationSettingsDialog(BuildContext context) {
@@ -1345,10 +1310,10 @@ class ProfileScreen extends StatelessWidget {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Color(0xFF9B5DE5).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.schedule, color: Colors.orange),
+                child: const Icon(Icons.schedule, color: Color(0xFF9B5DE5)),
               ),
               title: const Text('Scheduled Reminders'),
               subtitle: Consumer<HabitProvider>(
@@ -1453,58 +1418,5 @@ class ProfileScreen extends StatelessWidget {
     }
 
     return totalCompletions * 10;
-  }
-}
-
-class _ShopHighlight extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String subtitle;
-
-  const _ShopHighlight({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.65),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 }

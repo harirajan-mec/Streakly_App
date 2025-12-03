@@ -30,17 +30,17 @@ class PersistentNavigationWrapper extends StatelessWidget {
           gradient: LinearGradient(
             colors: [
               Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.primary.withOpacity(0.8),
+               Theme.of(context).colorScheme.primary.withAlpha((0.8 * 255).round()),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
+              BoxShadow(
+                color: Theme.of(context).colorScheme.primary.withAlpha((0.3 * 255).round()),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
           ],
         ),
         child: FloatingActionButton(
@@ -71,11 +71,11 @@ class PersistentNavigationWrapper extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 12,
-              offset: const Offset(0, -3),
-            ),
+              BoxShadow(
+                color: Colors.black.withAlpha((0.06 * 255).round()),
+                blurRadius: 12,
+                offset: const Offset(0, -3),
+              ),
           ],
         ),
         child: Row(
@@ -112,7 +112,7 @@ class PersistentNavigationWrapper extends StatelessWidget {
               isSelected ? selectedIcon : icon,
               color: isSelected
                   ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  : Theme.of(context).colorScheme.onSurface.withAlpha((0.6 * 255).round()),
               size: 22,
             ),
             const SizedBox(height: 2),
@@ -123,7 +123,7 @@ class PersistentNavigationWrapper extends StatelessWidget {
                   fontSize: 11,
                   color: isSelected
                       ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      : Theme.of(context).colorScheme.onSurface.withAlpha((0.6 * 255).round()),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
                 textAlign: TextAlign.center,

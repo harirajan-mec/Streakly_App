@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
-import '../../providers/auth_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/admob_service.dart';
 import '../main/main_navigation.dart';
 import '../../services/navigation_service.dart';
@@ -56,13 +56,14 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final prefs = await SharedPreferences.getInstance();
+      final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
       
       // Initialize saved view mode preference
       try {
         await NavigationService.initializeViewMode();
       } catch (e) {
-        print('⚠️ NavigationService init failed: $e');
+        debugPrint('⚠️ NavigationService init failed: $e');
       }
       
       // Give auth provider extra time to initialize if needed
@@ -77,26 +78,33 @@ class _SplashScreenState extends State<SplashScreen>
         await Future.delayed(const Duration(seconds: 1));
         admobService.showInterstitialAd();
       } catch (e) {
-        print('⚠️ AdMob not available: $e');
+        debugPrint('⚠️ AdMob not available: $e');
       }
       
-      if (authProvider.isAuthenticated) {
-        if (NavigationService.isGridViewMode) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => MainNavigationScreen()),
-          );
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => MainNavigation()),
-          );
-        }
-      } else {
+      if (!mounted) return;
+
+      if (!hasSeenOnboarding) {
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const OnboardingScreen()),
         );
+        return;
+      }
+
+      // Navigate to the appropriate view based on saved preference
+      if (NavigationService.isGridViewMode) {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => MainNavigationScreen()),
+        );
+      } else {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainNavigation()),
+        );
       }
     } catch (e) {
-      print('❌ Navigation error: $e');
+      debugPrint('❌ Navigation error: $e');
       // Fallback to onboarding if there's any error
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -147,7 +155,7 @@ class _SplashScreenState extends State<SplashScreen>
                       'Build Better Habits',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withAlpha((0.8 * 255).round()),
                         letterSpacing: 0.5,
                       ),
                     ),
