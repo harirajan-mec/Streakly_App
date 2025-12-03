@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../main/main_navigation.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -35,7 +37,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Earn Rewards',
       description: 'Unlock achievements and discover products that support your journey.',
       icon: Icons.emoji_events,
-      color: Colors.purple,
+      color: Color(0xFF9B5DE5),
     ),
   ];
 
@@ -66,6 +68,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Future<void> _completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_onboarding', true);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const MainNavigation()),
+    );
+  }
+
   Widget _buildPage(OnboardingPage page) {
     return Padding(
       padding: const EdgeInsets.all(32.0),
@@ -75,8 +86,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             width: 150,
             height: 150,
-            decoration: BoxDecoration(
-              color: page.color.withOpacity(0.1),
+              decoration: BoxDecoration(
+              color: page.color.withAlpha((0.1 * 255).round()),
               borderRadius: BorderRadius.circular(75),
             ),
             child: Icon(
@@ -98,7 +109,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             page.description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withAlpha((0.7 * 255).round()),
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -124,7 +135,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 decoration: BoxDecoration(
                   color: _currentPage == index
                       ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      : Theme.of(context).colorScheme.primary.withAlpha((0.3 * 255).round()),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -150,7 +161,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               else
                 TextButton(
                   style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    foregroundColor: Theme.of(context).colorScheme.onSurface.withAlpha((0.6 * 255).round()),
                     textStyle: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onPressed: null,
@@ -181,11 +192,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     textStyle: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  },
+                  onPressed: _completeOnboarding,
                   child: const Text('Get Started'),
                 ),
             ],
@@ -196,11 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               foregroundColor: Theme.of(context).colorScheme.primary,
               textStyle: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
+            onPressed: _completeOnboarding,
             child: const Text('Skip'),
           ),
         ],

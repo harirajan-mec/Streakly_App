@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
+
+import '../../services/export_import_service.dart';
 import '../../providers/habit_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/modern_button.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -104,7 +108,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context,
             title: 'General',
             icon: Icons.settings_outlined,
-            accent: Colors.tealAccent,
+            accent: Color(0xFF9B5DE5),
             children: [
               _buildActionTile(
                 context,
@@ -120,6 +124,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.download,
                 onTap: _showExportDialog,
               ),
+              _buildActionTile(
+                context,
+                title: 'Import Data',
+                subtitle: 'Import app data from JSON file',
+                icon: Icons.upload_file,
+                onTap: _showImportDialog,
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -127,8 +138,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context,
             title: 'Privacy & Security',
             icon: Icons.lock_outline,
-            accent: Colors.purpleAccent,
+            accent: Color(0xFF9B5DE5),
             children: [
+              _buildActionTile(
+                context,
+                title: 'PIN & Security',
+                subtitle: 'Set / change / remove app PIN and manage biometrics',
+                icon: Icons.lock,
+                onTap: () => _showPinManagementDialog(context),
+              ),
+              const SizedBox(height: 6),
               _buildActionTile(
                 context,
                 title: 'Privacy Policy',
@@ -169,6 +188,178 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  void _showPinManagementDialog(BuildContext context) async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final hasPin = await auth.hasPin();
+    if (!mounted) return;
+
+    if (!hasPin) {
+        // Offer to set PIN
+        final result = await showDialog<bool>(
+        context: navigator.context,
+        builder: (context) {
+          final controller = TextEditingController();
+          final confirmController = TextEditingController();
+          String? error;
+          return StatefulBuilder(builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Set PIN'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Enter new PIN'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: confirmController,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Confirm PIN'),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 8),
+                    Text(error!, style: const TextStyle(color: Colors.red)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                ElevatedButton(onPressed: () async {
+                  final navigator = Navigator.of(context);
+                  final pin = controller.text.trim();
+                  final confirm = confirmController.text.trim();
+                  if (pin.isEmpty || pin.length < 4) {
+                    setState(() { error = 'PIN must be at least 4 digits'; });
+                    return;
+                  }
+                  if (pin != confirm) {
+                    setState(() { error = 'PINs do not match'; });
+                    return;
+                  }
+                  final ok = await auth.setPin(pin);
+                  navigator.pop(ok);
+                }, child: const Text('Set PIN')),
+              ],
+            );
+          });
+        },
+      );
+
+      if (!mounted) return;
+      if (result == true) {
+        messenger.showSnackBar(const SnackBar(content: Text('PIN set successfully')));
+      }
+      return;
+    }
+
+    // If PIN exists, offer change or remove
+    if (!mounted) return;
+
+    final action = await showModalBottomSheet<String?>(
+      context: navigator.context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(leading: const Icon(Icons.edit), title: const Text('Change PIN'), onTap: () => Navigator.of(context).pop('change')),
+          ListTile(leading: const Icon(Icons.delete), title: const Text('Remove PIN'), onTap: () => Navigator.of(context).pop('remove')),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (action == 'change') {
+        // Change PIN: verify current then set new
+        final res = await showDialog<bool>(
+        context: navigator.context,
+        builder: (context) {
+          final current = TextEditingController();
+          final next = TextEditingController();
+          final confirm = TextEditingController();
+          String? error;
+          return StatefulBuilder(builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Change PIN'),
+              content: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  TextField(controller: current, keyboardType: TextInputType.number, obscureText: true, decoration: const InputDecoration(labelText: 'Current PIN')),
+                  const SizedBox(height: 8),
+                  TextField(controller: next, keyboardType: TextInputType.number, obscureText: true, decoration: const InputDecoration(labelText: 'New PIN')),
+                  const SizedBox(height: 8),
+                  TextField(controller: confirm, keyboardType: TextInputType.number, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm New PIN')),
+                  if (error != null) ...[const SizedBox(height: 8), Text(error!, style: const TextStyle(color: Colors.red))],
+                ]),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                ElevatedButton(onPressed: () async {
+                  final navigator = Navigator.of(context);
+                  final cur = current.text.trim();
+                  final n = next.text.trim();
+                  final c = confirm.text.trim();
+                  if (cur.isEmpty) { setState(() { error = 'Enter current PIN'; }); return; }
+                  if (n.length < 4) { setState(() { error = 'New PIN must be at least 4 digits'; }); return; }
+                  if (n != c) { setState(() { error = 'New PINs do not match'; }); return; }
+                  final okCur = await auth.verifyPin(cur);
+                  if (!okCur) { setState(() { error = 'Current PIN invalid'; }); return; }
+                  final ok = await auth.setPin(n);
+                  navigator.pop(ok);
+                }, child: const Text('Change')),
+              ],
+            );
+          });
+        },
+      );
+
+      if (!mounted) return;
+      if (res == true) messenger.showSnackBar(const SnackBar(content: Text('PIN changed')));
+      return;
+    }
+
+    if (action == 'remove') {
+        final confirmed = await showDialog<bool>(
+        context: navigator.context,
+        builder: (context) {
+          final controller = TextEditingController();
+          String? error;
+          return StatefulBuilder(builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Remove PIN'),
+              content: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Enter current PIN to remove it'),
+                const SizedBox(height: 8),
+                TextField(controller: controller, keyboardType: TextInputType.number, obscureText: true, decoration: const InputDecoration(labelText: 'Current PIN')),
+                if (error != null) ...[const SizedBox(height: 8), Text(error!, style: const TextStyle(color: Colors.red))],
+              ]),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                ElevatedButton(onPressed: () async {
+                  final navigator = Navigator.of(context);
+                  final cur = controller.text.trim();
+                  if (cur.isEmpty) { setState(() { error = 'Enter current PIN'; }); return; }
+                  final ok = await auth.verifyPin(cur);
+                  if (!ok) { setState(() { error = 'Invalid PIN'; }); return; }
+                  final removed = await auth.removePin();
+                  navigator.pop(removed);
+                }, child: const Text('Remove')),
+              ],
+            );
+          });
+        },
+      );
+
+      if (!mounted) return;
+      if (confirmed == true) messenger.showSnackBar(const SnackBar(content: Text('PIN removed')));
+      return;
+    }
   }
 
   Widget _buildSectionCard(
@@ -385,20 +576,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         csvContent += '"${habit.name}","${habit.description}","${habit.color.value}","${habit.frequency.name}","${habit.timeOfDay.name}","${habit.currentStreak}","${habit.longestStreak}","${(habit.completionRate * 100).toStringAsFixed(1)}%","$completedDatesStr"\n';
       }
       
+      final messenger = ScaffoldMessenger.of(context);
+
       // Get downloads directory
       final directory = await getDownloadsDirectory();
       if (directory != null) {
         final file = File('${directory.path}/streakly_habits_export_${DateTime.now().millisecondsSinceEpoch}.csv');
         await file.writeAsString(csvContent);
         
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+        messenger.showSnackBar(
           SnackBar(content: Text('Data exported to ${file.path}')),
         );
       } else {
         throw Exception('Could not access downloads folder');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
         SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.red),
       );
     }
@@ -430,8 +626,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     type: ModernButtonType.primary,
                     icon: Icons.download,
                     onPressed: () async {
-                      Navigator.of(context).pop();
+                      final navigator = Navigator.of(context);
+                      final messenger = ScaffoldMessenger.of(context);
+                      navigator.pop();
                       await _exportData();
+                      final file = await ExportImportService.instance.exportToFile();
+                      if (!mounted) return;
+                      messenger.showSnackBar(SnackBar(content: Text('JSON export saved to ${file.path}')));
                     },
                   ),
                 ),
@@ -441,6 +642,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showImportDialog() async {
+    try {
+      final messenger = ScaffoldMessenger.of(context);
+
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result == null || result.files.isEmpty) return;
+      final path = result.files.first.path;
+      if (path == null) return;
+
+      final file = File(path);
+      final content = await file.readAsString();
+
+      final res = await ExportImportService.instance.importFromJsonString(content, overwrite: false);
+      if (!mounted) return;
+      if (res['success'] == true) {
+        // Refresh habits data after successful import
+        await Provider.of<HabitProvider>(context, listen: false).loadHabits();
+        messenger.showSnackBar(SnackBar(content: Text('Import successful. Backup: ${res['backup']}')));
+      } else {
+        messenger.showSnackBar(SnackBar(content: Text('Import failed: ${res['error']} (backup: ${res['backup']})'), backgroundColor: Colors.red));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(SnackBar(content: Text('Import failed: $e'), backgroundColor: Colors.red));
+    }
   }
 
   void _showDeleteAccountDialog() {

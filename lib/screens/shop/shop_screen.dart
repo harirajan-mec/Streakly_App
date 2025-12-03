@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import '../../services/supabase_service.dart';
 import '../../models/product.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -21,12 +20,11 @@ class _ShopScreenState extends State<ShopScreen> {
 
   Future<void> _loadProducts() async {
     try {
-      final prods = await SupabaseService.instance.getProducts();
+      // Offline mode: products are not available. Keep empty or load bundled products.
       setState(() => _products.clear());
-      setState(() => _products.addAll(prods));
     } catch (e) {
       // ignore errors for now
-      print('Failed to load products: $e');
+      debugPrint('Failed to load products: $e');
     }
   }
 

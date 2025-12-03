@@ -1,9 +1,12 @@
+// Supabase configuration removed. App now uses local Hive storage.
+// This file remains as a deprecated stub to avoid breaking imports.
+@deprecated
 class SupabaseConfig {
-  // Replace these with your actual Supabase project credentials
-  static const String supabaseUrl = 'https://zpohnnokdhrsclmnfstd.supabase.co';
-  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpwb2hubm9rZGhyc2NsbW5mc3RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MDYwMDAsImV4cCI6MjA3NDk4MjAwMH0.h6A0R1KwdtbgeWc3XslP3HZfTnNKGxeP7vdVEiJFPfM';
-  
-  // Database table names
+  // Intentionally empty — Supabase keys removed for local-only mode.
+  static const String supabaseUrl = '';
+  static const String supabaseAnonKey = '';
+
+  // Keep table name constants for any lingering references.
   static const String usersTable = 'users';
   static const String habitsTable = 'habits';
   static const String habitCompletionsTable = 'habit_completions';

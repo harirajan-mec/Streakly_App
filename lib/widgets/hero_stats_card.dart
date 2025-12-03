@@ -41,11 +41,11 @@ class HeroStatsCard extends StatelessWidget {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withAlpha((0.2 * 255).toInt()),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha((0.1 * 255).toInt()),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -203,7 +203,7 @@ class HeroStatsCard extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   Colors.transparent,
-                  theme.colorScheme.primary.withOpacity(0.5),
+                  theme.colorScheme.primary.withAlpha((0.5 * 255).toInt()),
                   Colors.transparent,
                 ],
               ),
@@ -232,7 +232,7 @@ class HeroStatsCard extends StatelessWidget {
                     Container(
                       height: isSmallScreen ? 10 : 12,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
+                        color: Colors.white.withAlpha((0.08 * 255).toInt()),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -244,13 +244,13 @@ class HeroStatsCard extends StatelessWidget {
                           gradient: LinearGradient(
                             colors: [
                               theme.colorScheme.primary,
-                              theme.colorScheme.primary.withOpacity(0.7),
+                              theme.colorScheme.primary.withAlpha((0.7 * 255).toInt()),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withOpacity(0.5),
+                              color: theme.colorScheme.primary.withAlpha((0.5 * 255).toInt()),
                               blurRadius: 8,
                               offset: const Offset(0, 0),
                             ),
@@ -301,10 +301,10 @@ class HeroStatsCard extends StatelessWidget {
               horizontal: isSmallScreen ? 12 : 16,
             ),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.12),
+              color: theme.colorScheme.primary.withAlpha((0.12 * 255).toInt()),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: theme.colorScheme.primary.withOpacity(0.25),
+                color: theme.colorScheme.primary.withAlpha((0.25 * 255).toInt()),
                 width: 1,
               ),
             ),
@@ -312,7 +312,7 @@ class HeroStatsCard extends StatelessWidget {
               _getMotivationalMessage(),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withAlpha((0.95 * 255).toInt()),
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
                 fontSize: isSmallScreen ? 12 : null,

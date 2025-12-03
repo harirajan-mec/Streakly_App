@@ -36,7 +36,7 @@ class HabitProgressRing extends StatelessWidget {
             painter: _HabitProgressRingPainter(
               progress: progress,
               color: habit.color,
-              backgroundColor: theme.colorScheme.onSurface.withOpacity(0.1),
+              backgroundColor: theme.colorScheme.onSurface.withAlpha((0.1 * 255).round()),
               strokeWidth: strokeWidth,
             ),
           ),
@@ -44,7 +44,7 @@ class HabitProgressRing extends StatelessWidget {
             width: size * 0.32,
             height: size * 0.32,
             decoration: BoxDecoration(
-              color: habit.color.withOpacity(0.15),
+              color: habit.color.withAlpha((0.15 * 255).round()),
               shape: BoxShape.circle,
             ),
             child: Icon(

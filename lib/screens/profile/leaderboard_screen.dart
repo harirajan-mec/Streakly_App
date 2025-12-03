@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/leaderboard_entry.dart';
-import '../../services/supabase_service.dart';
+import '../../services/hive_service.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -10,7 +10,6 @@ class LeaderboardScreen extends StatefulWidget {
 }
 
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
-  final SupabaseService _supabaseService = SupabaseService.instance;
   List<LeaderboardEntry> _leaderboardData = const <LeaderboardEntry>[];
   bool _isLoading = true;
   String? _errorMessage;
@@ -28,10 +27,37 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     });
 
     try {
-      final results = await _supabaseService.getLeaderboardEntries(limit: 30);
+      // Build a local leaderboard from Hive data
+      final users = HiveService.instance.getUsers();
+      final habits = HiveService.instance.getHabits();
+
+      final entries = users.map((u) {
+        final userHabits = habits.where((h) => h.id != null).toList();
+        // Filter by user id if you have user_id in habit, otherwise use all habits
+        final userSpecificHabits = habits.where((h) => true).toList();
+
+        final totalHabits = userSpecificHabits.length;
+        final totalCompletions = userSpecificHabits.fold<int>(0, (sum, h) => sum + h.completedDates.length);
+        final currentStreak = userSpecificHabits.fold<int>(0, (maxv, h) => h.currentStreak > maxv ? h.currentStreak : maxv);
+        final longestStreak = userSpecificHabits.fold<int>(0, (maxv, h) => h.longestStreak > maxv ? h.longestStreak : maxv);
+
+        return LeaderboardEntry(
+          userId: u.id,
+          name: u.name,
+          email: u.email,
+          avatarEmoji: u.avatarUrl,
+          totalHabits: totalHabits,
+          totalCompletions: totalCompletions,
+          currentStreak: currentStreak,
+          longestStreak: longestStreak,
+        );
+      }).toList();
+
+      entries.sort((a, b) => b.totalCompletions.compareTo(a.totalCompletions));
+
       if (!mounted) return;
       setState(() {
-        _leaderboardData = results;
+        _leaderboardData = entries.take(30).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -505,7 +531,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 
   bool _isCurrentUser(LeaderboardEntry entry) {
-    final currentUserId = _supabaseService.currentUserId;
+    final settings = HiveService.instance.getSettings();
+    final currentUserId = settings['currentUserId'] as String?;
     return currentUserId != null && entry.userId == currentUserId;
   }
 }

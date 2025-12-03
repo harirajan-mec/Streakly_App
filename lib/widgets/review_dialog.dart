@@ -20,9 +20,9 @@ class _ReviewDialogState extends State<ReviewDialog> {
 
   void _submitReview() {
     // For now, just print the review to the console (dummy functionality)
-    print('--- User Review Submitted ---');
-    print('Review: ${_reviewController.text.trim()}');
-    print('-----------------------------');
+    debugPrint('--- User Review Submitted ---');
+    debugPrint('Review: ${_reviewController.text.trim()}');
+    debugPrint('-----------------------------');
 
     // Close the dialog
     Navigator.of(context).pop();
@@ -56,7 +56,7 @@ class _ReviewDialogState extends State<ReviewDialog> {
             Text(
               'Your feedback helps us improve. Please take a moment to share your thoughts!',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.8),
+                color: theme.colorScheme.onSurface.withAlpha((0.8 * 255).toInt()),
               ),
             ),
             const SizedBox(height: 20),

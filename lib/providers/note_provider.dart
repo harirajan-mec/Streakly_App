@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 import '../models/note.dart';
-import '../services/supabase_service.dart';
+import '../services/hive_service.dart';
 
 class NoteProvider with ChangeNotifier {
   final List<Note> _notes = [];
-  final Uuid _uuid = const Uuid();
+  
   bool _isLoading = false;
   String? _errorMessage;
   
@@ -24,9 +23,9 @@ class NoteProvider with ChangeNotifier {
       _isLoading = true;
       _errorMessage = null;
       
-      final notesData = await SupabaseService.instance.getUserNotes();
+      final notes = HiveService.instance.getNotes();
       _notes.clear();
-      _notes.addAll(notesData.map((json) => Note.fromJson(json)).toList());
+      _notes.addAll(notes);
       _isLoading = false;
       
       // Only notify if we have a widget tree
@@ -34,10 +33,10 @@ class NoteProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error loading notes: $e'); // Debug print
+      debugPrint('Error loading notes: $e');
       // If database table doesn't exist, use mock service or empty state
       if (e.toString().contains('PGRST205') || e.toString().contains('table') || e.toString().contains('notes')) {
-        print('Notes table not found, using empty state');
+        debugPrint('Notes table not found, using empty state');
         _notes.clear(); // Start with empty notes
       } else {
         _errorMessage = 'Failed to load notes: $e';
@@ -56,14 +55,13 @@ class NoteProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
       
-      print('Adding note: ${note.title}'); // Debug print
-      final noteData = await SupabaseService.instance.createNote(note.toJson());
-      final createdNote = Note.fromJson(noteData);
-      _notes.insert(0, createdNote); // Add to beginning for newest first
-      print('Note added successfully: ${createdNote.id}'); // Debug print
+      debugPrint('Adding note: ${note.title}');
+      await HiveService.instance.addNote(note);
+      _notes.insert(0, note); // Add to beginning for newest first
+      debugPrint('Note added successfully: ${note.id}');
     } catch (e) {
       _errorMessage = 'Failed to add note: $e';
-      print('Error adding note: $e'); // Debug print
+      debugPrint('Error adding note: $e');
       // Add locally as fallback
       _notes.insert(0, note);
     } finally {
@@ -78,14 +76,14 @@ class NoteProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
       
-      await SupabaseService.instance.updateNote(note.id, note.toJson());
+      await HiveService.instance.updateNote(note);
       final index = _notes.indexWhere((n) => n.id == note.id);
       if (index != -1) {
         _notes[index] = note;
       }
     } catch (e) {
       _errorMessage = 'Failed to update note: $e';
-      print('Error updating note: $e'); // Debug print
+      debugPrint('Error updating note: $e');
       // Update locally as fallback
       final index = _notes.indexWhere((n) => n.id == note.id);
       if (index != -1) {
@@ -103,11 +101,11 @@ class NoteProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
       
-      await SupabaseService.instance.deleteNote(noteId);
+      await HiveService.instance.deleteNote(noteId);
       _notes.removeWhere((note) => note.id == noteId);
     } catch (e) {
       _errorMessage = 'Failed to delete note: $e';
-      print('Error deleting note: $e'); // Debug print
+      debugPrint('Error deleting note: $e');
       // Delete locally as fallback
       _notes.removeWhere((note) => note.id == noteId);
     } finally {
@@ -126,18 +124,18 @@ class NoteProvider with ChangeNotifier {
       }).toList();
     } catch (e) {
       _errorMessage = 'Failed to search notes: $e';
-      print('Error searching notes: $e'); // Debug print
+      debugPrint('Error searching notes: $e');
       return [];
     }
   }
   
   Future<List<Note>> getNotesForHabit(String habitId) async {
     try {
-      final notesData = await SupabaseService.instance.getNotesForHabit(habitId);
-      return notesData.map((json) => Note.fromJson(json)).toList();
+      final notes = HiveService.instance.getNotesForHabit(habitId);
+      return notes;
     } catch (e) {
       _errorMessage = 'Failed to load habit notes: $e';
-      print('Error loading habit notes: $e');
+      debugPrint('Error loading habit notes: $e');
       return _notes.where((note) => note.habitId == habitId).toList();
     }
   }

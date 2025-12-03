@@ -84,7 +84,7 @@ class _CongratulationsPopupState extends State<CongratulationsPopup>
       children: [
         // Background overlay
         Container(
-          color: Colors.black.withOpacity(0.7),
+          color: Colors.black.withAlpha((0.7 * 255).round()),
           child: Center(
             child: SlideTransition(
               position: _slideAnimation,
@@ -97,11 +97,11 @@ class _CongratulationsPopupState extends State<CongratulationsPopup>
                     color: theme.cardColor,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.2),
+                      color: theme.colorScheme.outline.withAlpha((0.2 * 255).round()),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withAlpha((0.1 * 255).round()),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -149,7 +149,7 @@ class _CongratulationsPopupState extends State<CongratulationsPopup>
                                   'You completed all your habits for today! 🎉',
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 color: theme.colorScheme.onSurface
-                                    .withOpacity(0.85),
+                                  .withAlpha((0.85 * 255).round()),
                                 fontWeight: FontWeight.w600,
                               ),
                               textAlign: TextAlign.center,
@@ -191,7 +191,7 @@ class _CongratulationsPopupState extends State<CongratulationsPopup>
               Colors.blue,
               Colors.pink,
               Colors.orange,
-              Colors.purple,
+              Color(0xFF9B5DE5),
             ],
           ),
         ),
@@ -220,21 +220,21 @@ class _HabitIconBadge extends StatelessWidget {
       height: 90,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            baseColor.withOpacity(0.65),
-            baseColor,
-          ],
+              colors: [
+                baseColor.withAlpha((0.65 * 255).round()),
+                baseColor,
+              ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: baseColor.withOpacity(0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+            boxShadow: [
+              BoxShadow(
+                color: baseColor.withAlpha((0.35 * 255).round()),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
       ),
       child: Icon(
         icon ?? fallbackIcon,

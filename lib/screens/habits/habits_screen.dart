@@ -24,8 +24,6 @@ class _HabitsScreenState extends State<HabitsScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Set to list view mode
-    NavigationService.setGridViewMode(false);
     // Refresh habits after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshHabits();
@@ -57,8 +55,8 @@ class _HabitsScreenState extends State<HabitsScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface.withOpacity(0.95),
+        appBar: AppBar(
+          backgroundColor: theme.colorScheme.surface.withAlpha((0.95 * 255).round()),
         elevation: 0,
         titleSpacing: 0,
         title: Row(
@@ -131,7 +129,7 @@ class _HabitsScreenState extends State<HabitsScreen>
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                  color: Theme.of(context).colorScheme.outline.withAlpha((0.2 * 255).round())),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -140,7 +138,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color:
-                      Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                        Theme.of(context).colorScheme.primary.withAlpha((0.15 * 255).round()),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
@@ -165,7 +163,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.6),
+                    .withAlpha((0.6 * 255).round()),
                     ),
               ),
               const SizedBox(height: 24),
@@ -253,7 +251,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                                 color: Theme.of(context)
                                     .colorScheme
                                     .primary
-                                    .withOpacity(0.8),
+                                     .withAlpha((0.8 * 255).round()),
                                 fontSize: 26,
                               ),
                     ),

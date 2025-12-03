@@ -111,7 +111,7 @@ class _AddHabitDialogState extends State<_AddHabitDialog> {
     Colors.orange,
     Colors.blue,
     Colors.green,
-    Colors.purple,
+    Color(0xFF9B5DE5),
     Colors.red,
     Colors.teal,
     Colors.indigo,

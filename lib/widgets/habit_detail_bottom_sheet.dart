@@ -153,7 +153,7 @@ class HabitDetailBottomSheet extends StatelessWidget {
         width: 46,
         height: 4,
         decoration: BoxDecoration(
-          color: theme.colorScheme.onSurface.withOpacity(0.2),
+          color: theme.colorScheme.onSurface.withAlpha((0.2 * 255).round()),
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -170,7 +170,7 @@ class HabitDetailBottomSheet extends StatelessWidget {
           width: 62,
           height: 62,
           decoration: BoxDecoration(
-            color: habit.color.withOpacity(0.15),
+            color: habit.color.withAlpha((0.15 * 255).round()),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Icon(
@@ -447,8 +447,8 @@ class _StatChipWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.onSurface.withOpacity(0.08),
+          border: Border.all(
+          color: theme.colorScheme.onSurface.withAlpha((0.08 * 255).round()),
         ),
       ),
       child: Row(
@@ -458,7 +458,7 @@ class _StatChipWidget extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.08),
+              color: theme.colorScheme.primary.withAlpha((0.08 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(stat.icon, size: 20, color: theme.colorScheme.primary),
@@ -472,7 +472,7 @@ class _StatChipWidget extends StatelessWidget {
                 Text(
                   stat.label,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withAlpha((0.7 * 255).round()),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -511,8 +511,8 @@ class _InfoTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.onSurface.withOpacity(0.08),
+          border: Border.all(
+          color: theme.colorScheme.onSurface.withAlpha((0.08 * 255).round()),
         ),
       ),
       child: Row(
@@ -521,7 +521,7 @@ class _InfoTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.08),
+              color: theme.colorScheme.primary.withAlpha((0.08 * 255).round()),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 18, color: theme.colorScheme.primary),
@@ -534,7 +534,7 @@ class _InfoTile extends StatelessWidget {
                 Text(
                   label,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withAlpha((0.7 * 255).round()),
                   ),
                 ),
                 const SizedBox(height: 4),

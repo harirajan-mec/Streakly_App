@@ -107,8 +107,8 @@ class HabitProgressCard extends StatelessWidget {
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
-                                    Colors.orange.shade300,
-                                    Colors.deepOrange.shade600,
+                                    Color(0xFFD0A9F5),
+                                    Color(0xFF9B5DE5),
                                   ],
                                 ).createShader(bounds);
                               },

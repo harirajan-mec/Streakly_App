@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="com.android.vending.BILLING" />
 
     <application
         android:label="Streakly"
@@ -35,11 +36,9 @@
             android:exported="false" />
         <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.DismissedReceiver"
             android:exported="false" />
-        <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.RebootBroadcastReceiver" android:enabled="true" android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-            </intent-filter>
-        </receiver>
+        <!-- Removed RebootBroadcastReceiver: plugin class not present in APK on some setups.
+             Keeping other flutter_local_notifications receivers intact. If you need reboot
+             handling, re-add the receiver after ensuring the plugin provides the class. -->
 
         <meta-data
             android:name="flutterEmbedding"

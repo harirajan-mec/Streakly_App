@@ -1,7 +1,143 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import '../../services/purchase_service.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 
-class SubscriptionPlansScreen extends StatelessWidget {
+class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
+
+  @override
+  State<SubscriptionPlansScreen> createState() => _SubscriptionPlansScreenState();
+}
+
+class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
+  List<ProductDetails> _products = [];
+  bool _loading = true;
+  bool _isPremium = false;
+  StreamSubscription<String>? _statusSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSubscription();
+    _setupPurchaseListener();
+  }
+
+  @override
+  void dispose() {
+    _statusSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupPurchaseListener() {
+    _statusSubscription = PurchaseService.instance.statusStream.listen((status) {
+      if (!mounted) return;
+
+      if (status == 'pending') {
+        setState(() => _loading = true);
+      } else {
+        setState(() => _loading = false);
+        
+        if (status == 'success') {
+          _refreshPremiumStatus();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Purchase successful! Premium features unlocked.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (status == 'canceled') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Purchase canceled')),
+          );
+        } else if (status.startsWith('error')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(status.substring(7)), // Remove 'error: ' prefix
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _refreshPremiumStatus() async {
+    final Box settings = Hive.box('settings_box');
+    setState(() {
+      _isPremium = settings.get('isPremium', defaultValue: false) as bool;
+    });
+  }
+
+  Future<void> _initSubscription() async {
+    await PurchaseService.instance.init();
+    
+    // Check if the store is available
+    final bool available = await PurchaseService.instance.isAvailable;
+    if (!available) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Store not available. Please use a device with Google Play Store.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final prods = await PurchaseService.instance.queryProducts();
+      if (mounted) {
+        setState(() {
+          _products = prods;
+          _loading = false;
+        });
+        _refreshPremiumStatus();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load products: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _buy(ProductDetails product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Purchase'),
+        content: Text('Do you want to subscribe to ${product.title}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Subscribe'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _loading = true);
+      await PurchaseService.instance.buyProduct(product);
+      // Loading state will be handled by the stream listener
+    }
+  }
+
+  Future<void> _restore() async {
+    setState(() => _loading = true);
+    await PurchaseService.instance.restorePurchases();
+    // Loading state will be handled by the stream listener
+  }
 
   Widget _buildPlanCard({
     required BuildContext context,
@@ -11,6 +147,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
     required List<String> features,
     required Color accentColor,
     bool isPopular = false,
+    ProductDetails? product,
   }) {
     final theme = Theme.of(context);
     return Card(
@@ -19,11 +156,11 @@ class SubscriptionPlansScreen extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: title == 'Free' 
-              ? Colors.white 
+          color: title == 'Free'
+              ? Colors.white
               : title == 'Monthly Pro'
-                  ? const Color(0xFF4B0082)
-                  : const Color(0xFFFFD700), // Gold for yearly
+                  ? const Color(0xFF9B5DE5) // Bright Purple
+                  : const Color(0xFFFFD700),
           width: 2,
         ),
       ),
@@ -69,7 +206,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
                   TextSpan(
                     text: duration,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withAlpha((0.7 * 255).round()),
                     ),
                   ),
                 ],
@@ -101,14 +238,12 @@ class SubscriptionPlansScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // TODO: Handle subscription
-                },
+                onPressed: title == 'Free' || product == null || _isPremium ? null : () => _buy(product),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: title == 'Free' 
+                  backgroundColor: title == 'Free'
                       ? Colors.white
                       : title == 'Monthly Pro'
-                          ? const Color(0xFF4B0082)
+                          ? const Color(0xFF9B5DE5) // Bright Purple
                           : const Color(0xFFFFD700),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -119,7 +254,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
                       : Colors.white, // White text for purple button
                 ),
                 child: Text(
-                  title == 'Free' ? 'Current Plan' : 'Subscribe',
+                  title == 'Free' ? 'Current Plan' : (_isPremium ? 'Purchased' : 'Subscribe'),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -136,9 +271,14 @@ class SubscriptionPlansScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.surface.withOpacity(0.95),
+        backgroundColor: theme.colorScheme.surface.withAlpha((0.95 * 255).round()),
         elevation: 0,
         title: Text(
           'Subscription Plans',
@@ -167,10 +307,44 @@ class SubscriptionPlansScreen extends StatelessWidget {
             Text(
               'Select the perfect plan for your needs',
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withAlpha((0.7 * 255).round()),
               ),
             ),
             const SizedBox(height: 24),
+            if (_isPremium)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withAlpha((0.1 * 255).round()),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.green),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Premium Active',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                        Text(
+                          'You have access to all features',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             _buildPlanCard(
               context: context,
               title: 'Free',
@@ -191,6 +365,12 @@ class SubscriptionPlansScreen extends StatelessWidget {
               duration: '/month',
               accentColor: theme.colorScheme.primary,
               isPopular: true,
+              product: _products.isNotEmpty 
+                  ? _products.firstWhere(
+                      (p) => p.id.contains('monthly'), 
+                      orElse: () => _products.first
+                    ) 
+                  : null,
               features: [
                 'Unlimited habits',
                 'Advanced analytics',
@@ -206,6 +386,12 @@ class SubscriptionPlansScreen extends StatelessWidget {
               price: '₹999',
               duration: '/year',
               accentColor: const Color(0xFFFFD700), // Gold color
+              product: _products.isNotEmpty 
+                  ? _products.firstWhere(
+                      (p) => p.id.contains('yearly'), 
+                      orElse: () => _products.first
+                    ) 
+                  : null,
               features: [
                 'All Monthly Pro features',
                 '2 months free',
@@ -214,6 +400,21 @@ class SubscriptionPlansScreen extends StatelessWidget {
                 'Advanced habit insights',
                 'Personal habit coach AI',
               ],
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _restore,
+                      icon: const Icon(Icons.restore),
+                      label: const Text('Restore Purchases'),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 32),
           ],
